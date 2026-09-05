@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arcticgnn"
+version = "1.0.0"
+description = "Tipping thresholds of Arctic sea ice and graph neural network emulators"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+dependencies = [
+    "numpy>=1.20",
+    "scipy>=1.6",
+    "matplotlib>=3.3",
+    "torch>=1.12",
+    "cartopy>=0.18",
+    "shapely>=1.7",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=6.0"]
+
+[tool.setuptools.packages.find]
+include = ["arcticgnn*"]
