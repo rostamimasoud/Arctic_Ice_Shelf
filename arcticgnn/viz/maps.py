@@ -9,6 +9,7 @@ different sources leaves ice apparently sitting on land.
 
 from __future__ import annotations
 
+import matplotlib as mpl
 import numpy as np
 
 from . import style
@@ -68,7 +69,8 @@ def draw_field(axes, grid, values: np.ndarray, cmap=None, vmin: float = None,
         field.T, origin="lower",
         extent=(-reach, reach, -reach, reach),
         cmap=cmap if cmap is not None else style.SEQUENTIAL,
-        vmin=vmin, vmax=vmax, norm=norm, interpolation="nearest", zorder=2)
+        vmin=vmin, vmax=vmax, norm=norm, interpolation="nearest",
+        zorder=2, rasterized=True)
 
     if coastline:
         draw_coastline(axes, reach)
@@ -76,10 +78,7 @@ def draw_field(axes, grid, values: np.ndarray, cmap=None, vmin: float = None,
     axes.set_xlim(-reach, reach)
     axes.set_ylim(-reach, reach)
     axes.set_aspect("equal")
-    axes.set_xticks([])
-    axes.set_yticks([])
-    for spine in axes.spines.values():
-        spine.set_visible(False)
+    style.bare_axes(axes)
     return image
 
 
@@ -193,12 +192,28 @@ def draw_vectors(axes, grid, u: np.ndarray, v: np.ndarray, step: int = 4,
 
 
 def add_colourbar(figure, image, axes, label: str, pad: float = 0.02,
-                  fraction: float = 0.046, orientation: str = "vertical"):
-    """Attach a colour bar with a label, sized to the axes it belongs to."""
+                  fraction: float = 0.040, orientation: str = "vertical",
+                  n_ticks: int = 5):
+    """Attach a slim colour bar, sized to the axes it belongs to.
+
+    Three details separate this from the default: the bar is narrow, since a
+    wide one competes with the data it describes; its outline is removed and
+    replaced by nothing, the colour field being its own boundary; and its minor
+    ticks are cleared, because :func:`style.use_style` switches them on globally
+    for the data axes and on a colour bar they merely clutter the scale.
+    """
     bar = figure.colorbar(image, ax=axes, fraction=fraction, pad=pad,
                           orientation=orientation)
-    bar.set_label(label, fontsize=6.5, color=style.INK["primary"])
-    bar.ax.tick_params(labelsize=6, length=2, width=0.5,
-                       color=style.INK["secondary"])
+    bar.set_label(label, fontsize=6.5, color=style.INK["primary"], labelpad=3.0)
+    bar.ax.tick_params(labelsize=6, length=1.8, width=0.45,
+                       color=style.INK["secondary"],
+                       labelcolor=style.INK["primary"], pad=1.6)
+    bar.ax.minorticks_off()
     bar.outline.set_visible(False)
+    bar.locator = mpl.ticker.MaxNLocator(nbins=n_ticks, prune=None)
+    bar.update_ticks()
+    # A hairline along the length of the bar gives it a defined edge without
+    # boxing it in.
+    bar.solids.set_edgecolor("face")
+    bar.solids.set_rasterized(True)
     return bar

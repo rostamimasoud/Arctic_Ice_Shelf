@@ -175,6 +175,96 @@ def figure_transport(calibration: dict) -> None:
     print("  figure S2 written")
 
 
+# --------------------------------------------------------------------------- #
+# S3: emulator skill and what its weights report
+# --------------------------------------------------------------------------- #
+
+def figure_emulators(emulators: dict) -> None:
+    """Emulator skill, and whether attention recovers physical influence."""
+    import matplotlib.pyplot as plt
+
+    style.use_style()
+    figure, axes_grid = plt.subplots(1, 3, figsize=(style.WIDTH_DOUBLE, 2.5))
+    figure.subplots_adjust(wspace=0.40)
+
+    scores = emulators["scores"]
+    names = [s["architecture"] for s in scores]
+    labels = {"dense": "No neighbours", "convolution": "Fixed weights",
+              "attention": "Learned weights", "edge": "With geometry"}
+    positions = np.arange(len(names))
+
+    # (a) skill on each of the two predicted quantities.
+    axes = axes_grid[0]
+    ice = [s["thickness_variance_explained"] for s in scores]
+    ocean = [s["variance_explained"][1] for s in scores]
+    width = 0.38
+    axes.bar(positions - width / 2, ice, width=width,
+             color=style.SOURCE["observations"], label="Ice thickness")
+    axes.bar(positions + width / 2, ocean, width=width,
+             color=style.SOURCE["emulator"], label="Ocean temperature")
+    axes.set_xticks(positions)
+    axes.set_xticklabels([labels[n] for n in names], rotation=28, ha="right")
+    axes.set_ylabel("Variance of monthly change explained")
+    axes.set_ylim(0.0, 1.30)
+    axes.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    axes.legend(loc="upper left", fontsize=5.8)
+    style.soften_grid(axes)
+    style.panel_label(axes, "a")
+
+    # (b) influence distance measured three ways.
+    axes = axes_grid[1]
+    seasons = list(emulators["connectivity"])
+    kinds = ("physical", "emulator", "attention")
+    kind_labels = {"physical": "Model", "emulator": "Emulator",
+                   "attention": "Attention"}
+    kind_colours = {"physical": style.SOURCE["observations"],
+                    "emulator": style.SOURCE["emulator"],
+                    "attention": style.CATEGORICAL[2]}
+    width = 0.26
+
+    for offset, kind in zip((-width, 0.0, width), kinds):
+        centres, lower, upper = [], [], []
+        for season in seasons:
+            entry = emulators["connectivity"][season]
+            summary = (entry["physical"] if kind == "physical"
+                       else entry["edge"][kind])
+            centres.append(summary[0])
+            lower.append(max(summary[0] - summary[1], 0.0))
+            upper.append(max(summary[2] - summary[0], 0.0))
+        axes.bar(np.arange(len(seasons)) + offset, centres, width=width,
+                 color=kind_colours[kind], label=kind_labels[kind],
+                 yerr=[lower, upper],
+                 error_kw={"elinewidth": 0.6, "capsize": 1.2})
+
+    axes.set_xticks(np.arange(len(seasons)))
+    axes.set_xticklabels([s.capitalize() for s in seasons])
+    axes.set_ylabel("Influence distance (km)")
+    axes.legend(loc="upper left", fontsize=5.8)
+    style.soften_grid(axes)
+    style.panel_label(axes, "b")
+
+    # (c) how well each estimate tracks the model, cell by cell.
+    axes = axes_grid[2]
+    for offset, kind in zip((-0.16, 0.16), ("emulator", "attention")):
+        values = [emulators["connectivity"][season]["edge"]
+                  [f"{kind}_versus_physical"]["correlation"]
+                  for season in seasons]
+        axes.bar(np.arange(len(seasons)) + offset, values, width=0.32,
+                 color=kind_colours[kind], label=kind_labels[kind])
+    axes.axhline(0.0, color=style.INK["secondary"], linewidth=0.6)
+    axes.set_xticks(np.arange(len(seasons)))
+    axes.set_xticklabels([s.capitalize() for s in seasons])
+    axes.set_ylabel("Correlation with the model")
+    axes.set_ylim(-0.45, 1.0)
+    axes.legend(loc="upper right", fontsize=5.8)
+    style.soften_grid(axes)
+    style.panel_label(axes, "c")
+
+    style.save(figure, FIGURE_DIR / "figureS3_emulators")
+    plt.close(figure)
+    print("  figure S3 written")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", type=str, default=None)
@@ -186,6 +276,9 @@ def main() -> None:
         figure_calibration(calibration)
     if calibration and arguments.only in (None, "transport"):
         figure_transport(calibration)
+    emulators = load("emulators.json")
+    if emulators and arguments.only in (None, "emulators"):
+        figure_emulators(emulators)
     print(f"supplementary figures are in {FIGURE_DIR}")
 
 
