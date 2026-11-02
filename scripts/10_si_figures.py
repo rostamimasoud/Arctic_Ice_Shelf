@@ -265,6 +265,65 @@ def figure_emulators(emulators: dict) -> None:
     print("  figure S3 written")
 
 
+# --------------------------------------------------------------------------- #
+# S8: continuation of the spatially resolved model
+# --------------------------------------------------------------------------- #
+
+def figure_spatial_bifurcation(data: dict) -> None:
+    """The leading Floquet multiplier of the spatial model stays below one."""
+    import matplotlib.pyplot as plt
+
+    style.use_style()
+    figure, axes_grid = plt.subplots(1, 2, figsize=(style.WIDTH_DOUBLE, 2.6))
+
+    def settled(branch):
+        return [p for p in branch if p["residual"] < 1e-2]
+
+    cold = settled(data["cold_branch"])
+    warm = settled(data["warm_branch"])
+    present = 2.30
+
+    cold_f = np.array([p["forcing"] for p in cold])
+    cold_h = np.array([p["mean_thickness_m"] for p in cold])
+    cold_l = np.array([p["leading_multiplier"] for p in cold])
+    warm_f = np.array([p["forcing"] for p in warm])
+    warm_h = np.array([p["mean_thickness_m"] for p in warm])
+    warm_l = np.array([p["leading_multiplier"] for p in warm])
+
+    # (a) mean thickness against forcing: the two starts land on one curve.
+    axes = axes_grid[0]
+    axes.plot(cold_f, cold_h, color=style.CATEGORICAL[0], marker="o",
+              markersize=3.2, linewidth=0.9, label="Perennial start")
+    axes.plot(warm_f, warm_h, color=style.CATEGORICAL[1], marker="s",
+              markersize=3.2, linewidth=0.9, label="Ice-free start")
+    axes.axvline(present, color=style.INK["muted"], linewidth=0.7,
+                 linestyle=":")
+    axes.set_xlabel("Greenhouse forcing (W m$^{-2}$)")
+    axes.set_ylabel("Mean ice thickness (m)")
+    axes.legend(loc="upper right", fontsize=5.8)
+    style.soften_grid(axes)
+    style.panel_label(axes, "a")
+
+    # (b) the leading Floquet multiplier remains below unity.
+    axes = axes_grid[1]
+    axes.plot(cold_f, cold_l, color=style.CATEGORICAL[0], marker="o",
+              markersize=3.2, linewidth=0.9)
+    axes.plot(warm_f, warm_l, color=style.CATEGORICAL[1], marker="s",
+              markersize=3.2, linewidth=0.9)
+    axes.axhline(1.0, color=style.INK["muted"], linewidth=0.7, linestyle="--")
+    axes.axvline(present, color=style.INK["muted"], linewidth=0.7,
+                 linestyle=":")
+    axes.set_xlabel("Greenhouse forcing (W m$^{-2}$)")
+    axes.set_ylabel("Leading Floquet multiplier")
+    axes.set_ylim(0.70, 1.08)
+    style.soften_grid(axes)
+    style.panel_label(axes, "b")
+
+    style.save(figure, FIGURE_DIR / "figureS8_spatial_bifurcation")
+    plt.close(figure)
+    print("  figure S8 written")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", type=str, default=None)
@@ -279,6 +338,9 @@ def main() -> None:
     emulators = load("emulators.json")
     if emulators and arguments.only in (None, "emulators"):
         figure_emulators(emulators)
+    spatial = load("spatial_bifurcation.json")
+    if spatial and arguments.only in (None, "spatial_bifurcation"):
+        figure_spatial_bifurcation(spatial)
     print(f"supplementary figures are in {FIGURE_DIR}")
 
 
